@@ -3,6 +3,7 @@ const router = express.Router();
 const crypto = require('crypto');
 const prisma = require('../prisma/prisma');
 const { verifyToken } = require('./userRoutes');
+const jwt = require('jsonwebtoken');
 
 // Generate short code
 function generateShortCode(length = 6) {
@@ -17,6 +18,7 @@ router.get('/', verifyToken, async (req, res) => {
   try {
     const { user_id } = req.query;
     
+    // ถ้าไม่มี user_id ใน query ให้ดึงของ user ที่ login
     const whereClause = user_id 
       ? { user_id: parseInt(user_id) } 
       : { user_id: req.userId };
@@ -40,8 +42,8 @@ router.get('/', verifyToken, async (req, res) => {
     
     res.status(200).json({ urls });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Server error" });
+    console.error('Error fetching URLs:', error);
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 });
 
@@ -106,8 +108,8 @@ router.get('/s/:shortCode', async (req, res) => {
   }
 });
 
-// ที่บรรทัด CREATE short URL - ลบ verifyToken ออก
-router.post('/', async (req, res) => {  // ← ลบ verifyToken ออก
+// CREATE short URL - รองรับทั้ง logged-in และ anonymous
+router.post('/', async (req, res) => {
   try {
     const { original_url, custom_alias, title, expires_at } = req.body;
     
@@ -115,6 +117,7 @@ router.post('/', async (req, res) => {  // ← ลบ verifyToken ออก
       return res.status(400).json({ message: 'Original URL is required' });
     }
     
+    // Validate URL format
     try {
       new URL(original_url);
     } catch (err) {
@@ -123,6 +126,7 @@ router.post('/', async (req, res) => {  // ← ลบ verifyToken ออก
     
     let short_code = custom_alias || generateShortCode();
     
+    // Check if short_code already exists
     const existing = await prisma.urls.findUnique({
       where: { short_code }
     });
@@ -134,9 +138,24 @@ router.post('/', async (req, res) => {  // ← ลบ verifyToken ออก
       short_code = generateShortCode(8);
     }
     
+    // ตรวจสอบว่ามี token หรือไม่ (logged in or not)
+    let userId = null;
+    const authHeader = req.headers['authorization'];
+    if (authHeader) {
+      try {
+        const token = authHeader.split(' ')[1];
+        const decode = jwt.verify(token, process.env.JWT_KEY);
+        userId = decode.userId;
+      } catch (err) {
+        // ถ้า token ไม่ valid ก็ให้เป็น anonymous
+        userId = null;
+      }
+    }
+    
+    // Create URL
     const url = await prisma.urls.create({
       data: {
-        user_id: null,  // ← ไม่ต้องมี user_id
+        user_id: userId,  // อาจเป็น null ถ้าไม่ได้ login
         original_url,
         short_code,
         custom_alias,
@@ -145,12 +164,14 @@ router.post('/', async (req, res) => {  // ← ลบ verifyToken ออก
       }
     });
     
+    // Create analytics record
     await prisma.url_analytics.create({
       data: {
         url_id: url.id
       }
     });
     
+    // Fetch created URL with relations
     const createdUrl = await prisma.urls.findUnique({
       where: { id: url.id },
       include: {
@@ -163,8 +184,8 @@ router.post('/', async (req, res) => {  // ← ลบ verifyToken ออก
       url: createdUrl 
     });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Server error" });
+    console.error('Error creating URL:', error);
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 });
 
