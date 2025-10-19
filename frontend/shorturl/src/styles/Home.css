@@ -1,9 +1,18 @@
 /* Home Container */
 .home-container {
-  min-height: 100vh;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100vw;
+  height: 100vh;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   display: flex;
   flex-direction: column;
+  overflow-y: auto;
+  margin: 0;
+  padding: 0;
 }
 
 /* Header */
@@ -145,6 +154,12 @@
   font-size: 1rem;
   transition: all 0.3s;
   background: #f9fafb;
+  color: #1f2937; /* ⚠️ เพิ่มสีตัวอักษร */
+}
+
+.url-input::placeholder {
+  color: #9ca3af;
+  opacity: 1;
 }
 
 .url-input:focus {
@@ -152,6 +167,7 @@
   border-color: #667eea;
   background: white;
   box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+  color: #1f2937; /* ⚠️ เพิ่มสีตัวอักษร */
 }
 
 .error-message {
@@ -210,6 +226,13 @@
   border-radius: 0.75rem;
   font-size: 0.95rem;
   background: #f9fafb;
+  color: #1f2937; /* ⚠️ เพิ่มสีตัวอักษร */
+}
+
+.short-url-input:focus {
+  outline: none;
+  border-color: #667eea;
+  background: white;
 }
 
 .btn-copy {
