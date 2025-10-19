@@ -15,6 +15,27 @@ app.use(cors({
   credentials: true
 }));
 
+// CORS Configuration - รองรับทั้ง localhost และ production
+const allowedOrigins = [
+  'http://localhost:5173',
+  'https://your-app.vercel.app', // เปลี่ยนตอนได้ domain
+  process.env.FRONTEND_URL
+].filter(Boolean);
+
+app.use(cors({
+  origin: function(origin, callback) {
+    // อนุญาต requests ที่ไม่มี origin (mobile apps, curl, postman)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true
+}));
+
 // Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
