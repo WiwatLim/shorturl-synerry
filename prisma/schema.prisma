@@ -1,0 +1,86 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+  relationMode = "prisma"
+}
+
+model url_analytics {
+  id              Int       @id @default(autoincrement())
+  url_id          Int       @unique(map: "url_id")
+  total_clicks    Int?      @default(0)
+  unique_clicks   Int?      @default(0)
+  last_clicked_at DateTime? @db.Timestamp(0)
+  urls            urls      @relation(fields: [url_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "url_analytics_ibfk_1")
+
+  @@index([total_clicks], map: "idx_total_clicks")
+}
+
+model url_clicks {
+  id          Int                     @id @default(autoincrement())
+  url_id      Int
+  ip_address  String?                 @db.VarChar(45)
+  user_agent  String?                 @db.Text
+  referer     String?                 @db.Text
+  country     String?                 @db.VarChar(50)
+  city        String?                 @db.VarChar(100)
+  device_type url_clicks_device_type? @default(other)
+  clicked_at  DateTime?               @default(now()) @db.Timestamp(0)
+  urls        urls                    @relation(fields: [url_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "url_clicks_ibfk_1")
+
+  @@index([clicked_at], map: "idx_clicked_at")
+  @@index([url_id], map: "idx_url_id")
+}
+
+model urls {
+  id            Int            @id @default(autoincrement())
+  user_id       Int?
+  original_url  String         @db.Text
+  short_code    String         @unique(map: "short_code") @db.VarChar(10)
+  custom_alias  String?        @db.VarChar(50)
+  title         String?        @db.VarChar(255)
+  qr_code_path  String?        @db.VarChar(255)
+  is_active     Boolean?       @default(true)
+  expires_at    DateTime?      @db.Timestamp(0)
+  created_at    DateTime?      @default(now()) @db.Timestamp(0)
+  updated_at    DateTime?      @default(now()) @db.Timestamp(0)
+  url_analytics url_analytics?
+  url_clicks    url_clicks[]
+  users         users?         @relation(fields: [user_id], references: [id], onUpdate: NoAction, map: "urls_ibfk_1")
+
+  @@index([created_at], map: "idx_created_at")
+  @@index([short_code], map: "idx_short_code")
+  @@index([user_id], map: "idx_user_id")
+}
+
+model users {
+  id         Int         @id @default(autoincrement())
+  username   String      @unique(map: "username") @db.VarChar(50)
+  email      String      @unique(map: "email") @db.VarChar(100)
+  password   String      @db.VarChar(255)
+  full_name  String?     @db.VarChar(100)
+  role       users_role? @default(user)
+  is_active  Boolean?    @default(true)
+  created_at DateTime?   @default(now()) @db.Timestamp(0)
+  updated_at DateTime?   @default(now()) @db.Timestamp(0)
+  last_login DateTime?   @db.Timestamp(0)
+  urls       urls[]
+
+  @@index([email], map: "idx_email")
+  @@index([username], map: "idx_username")
+}
+
+enum users_role {
+  user
+  admin
+}
+
+enum url_clicks_device_type {
+  desktop
+  mobile
+  tablet
+  other
+}
